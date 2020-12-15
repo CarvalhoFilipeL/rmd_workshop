@@ -1,0 +1,441 @@
+### Kent Mouw MIBC cohort of patients with prior XRT for prostate cancer 
+### September 2020 
+### WES sequencing, Illumina, hg19, Tumor-only, n=29, FFPE samples (7 samples didn't pass ContEst < 0.04)
+
+# Packages
+library(plyr)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(maftools)
+
+# CRAN packages
+library(data.table)
+library(pheatmap)
+# Bioconductor packages
+library(BSgenome.Hsapiens.1000genomes.hs37d5)
+library(SomaticSignatures)
+library(SomaticCancerAlterations)
+library(VariantAnnotation)
+
+#path to xrt MAF files
+
+setwd("/Users/filipecarvalho/maf/")
+
+input_path <- "/Users/filipecarvalho/maf/"
+input_suffix <- "*.commonfilter.pass.maf"
+
+file_list_passmaf <- list.files(path = input_path, pattern = input_suffix)
+file_list_passmaf <- paste(input_path, file_list_passmaf, sep = "")
+
+file_list_passmaf
+
+df=data.frame()
+for(i in 1:length(file_list_passmaf)) {
+        df_tmp <- read.table(file_list_passmaf[i], sep = "\t",header = TRUE, comment.char = "#", skipNul = FALSE, fill = TRUE, quote = "", row.names = NULL, stringsAsFactors = FALSE, na.strings = c("","NA"))
+        df <- rbind(df,df_tmp)
+        rm(df_tmp)
+}
+
+df <- mutate(df, total_reads = df$t_alt_count + df$t_ref_count)
+df_reduced <- subset(df, total_reads >= 14)
+dim(df_reduced) ## 18178   329
+
+
+### ============================================================================
+
+## Maff tools
+xrt_bca_maf <- read.maf(maf = df_reduced)
+xrt_bca_maf
+
+plotmafSummary(maf = xrt_bca_maf, rmOutlier = TRUE, addStat = 'median', dashboard = TRUE, titvRaw = FALSE)
+
+oncoplot(maf = xrt_bca_maf, top = 10)
+
+## Maftools df_reduced for TCGA bladder cancer genes
+bca_genes <- c("TP53", "KMT2D", "KDM6A", "ARID1A", "PIK3CA", "KMT2C", "RB1", "EP300", "FGFR3", "STAG2", "ATM", "FAT1", "ELF3", "CREBBP", "ERBB2", "SPTAN1", "KMT2A", "ERBB3", "ERCC2", "CDKN1A", "ASXL2", "TSC1", "FBXW7")
+
+## RColorBrewer color pallet for variant classifications
+vc_col <- RColorBrewer::brewer.pal(n=6, name = "Dark2")
+names(vc_col) <- c("Frame_Shift_Ins", "Frame_Shift_Del", "Missense_Mutation", "Splice_Site", "Nonsense_Mutation", "Multi_Hit")
+print(vc_col)
+oncoplot(maf = xrt_bca_maf, colors= vc_col, genes = bca_genes, draw_titv = TRUE)
+
+### ============================================================================
+## Maftools df_reduced for ALL DNA damage response genes
+dnarepair_genes <- c("MLH1", "MSH2", "MSH6", "PMS1", "PMS2", "ERCC2", "ERCC3", "ERCC4", "ERCC5", "BRCA1", "BRCA2", "MRE11A", "NBN", "RAD50", "RAD51", "RAD51B", "RAD51D", "RAD52", "RAD54L", "BRIP1", "FANCA", "FANCC", "PALB2", "RAD51C", "BLM", "ATM", "ATR", "CHEK1", "CHEK2", "MDC1", "POLE", "MUTYH", "PARP1", "RECQL4")
+
+## RColorBrewer color pallet for variant classifications
+vc_col <- RColorBrewer::brewer.pal(n=6, name = "Dark2")
+names(vc_col) <- c("Frame_Shift_Ins", "Frame_Shift_Del", "Missense_Mutation", "Splice_Site", "Nonsense_Mutation", "Multi_Hit")
+print(vc_col)
+oncoplot(maf = xrt_bca_maf, colors= vc_col, genes = dnarepair_genes, draw_titv = TRUE)
+
+## Maftools df_reduced for MUTATED DNA damage response genes 
+dnarepair_mutated <- c("FANCA", "MSH6", "CHEK2", "BRCA1", "PALB2", "POLE", "RAD54L", "ERCC5", "BRCA2", "ATM", "MSH2", "ERCC2", "RAD51B", "MDC1")
+
+## RColorBrewer color pallet for variant classifications
+vc_col <- RColorBrewer::brewer.pal(n=6, name = "Dark2")
+names(vc_col) <- c("Frame_Shift_Ins", "Frame_Shift_Del", "Missense_Mutation", "Splice_Site", "Nonsense_Mutation", "Multi_Hit")
+print(vc_col)
+oncoplot(maf = xrt_bca_maf, colors= vc_col, genes = dnarepair_mutated, draw_titv = TRUE)
+
+### ============================================================================
+
+## Transitions transversions
+xrt_bca_maf.titv = titv(maf = xrt_bca_maf, plot = FALSE, useSyn = TRUE)
+## plot titv summary
+plotTiTv(res = xrt_bca_maf.titv)
+
+### ============================================================================
+## lollipop plot for TP53
+lollipopPlot(maf = xrt_bca_maf, gene = 'TP53', AACol = 'Protein_Change', showMutationRate = TRUE)
+
+## lollipop plot for ERCC2
+lollipopPlot(maf = xrt_bca_maf, gene = 'ERCC2', AACol = 'Protein_Change', showMutationRate = TRUE)
+
+## lollipop plot for KDM6A
+lollipopPlot(maf = xrt_bca_maf, gene = 'KDM6A', AACol = 'Protein_Change', showMutationRate = TRUE)
+
+## =============================================================================
+## Mutation load against TCGA
+xrt_bca_mutload <- tcgaCompare(maf = xrt_bca_maf, cohortName = "Mouw_xrt_Bca")
+
+## Somatic interactions exclusive/co-occurance events analysis on top10 mutated genes (performs pair-wise Fishers exact to detect significant pairs of genes)
+somaticInteractions(maf = xrt_bca_maf,top = 25, pvalue = 0.05)
+
+## Oncogenic signaling pathways
+OncogenicPathways(maf = xrt_bca_maf)
+PlotOncogenicPathways(maf = xrt_bca_maf, pathways = "RTK-RAS")
+PlotOncogenicPathways(maf = xrt_bca_maf, pathways = "NOTCH")
+PlotOncogenicPathways(maf = xrt_bca_maf, pathways = "PI3K")
+PlotOncogenicPathways(maf = xrt_bca_maf, pathways = "TP53")
+PlotOncogenicPathways(maf = xrt_bca_maf, pathways = "Cell_Cycle")
+PlotOncogenicPathways(maf = xrt_bca_maf, pathways = "WNT")
+PlotOncogenicPathways(maf = xrt_bca_maf, pathways = "Hippo")
+PlotOncogenicPathways(maf = xrt_bca_maf, pathways = "MYC")
+
+## =============================================================================
+## Mutational signatures 
+if(!requireNamespace("BiocManager", quietly = TRUE))
+        install.packages("BiocManager")
+BiocManager::install("BSgenome.Hsapiens.UCSC.hg19")
+
+library(BSgenome.Hsapiens.UCSC.hg19, quietly = TRUE)
+
+xrt_bca_tnm <- trinucleotideMatrix(maf = xrt_bca_maf, prefix = "chr", add = TRUE, ref_genome = "BSgenome.Hsapiens.UCSC.hg19")
+
+### Differences in APOBEC enriched and non-enriched samples
+plotApobecDiff(tnm = xrt_bca_tnm, maf = xrt_bca_maf, pVal = 0.05, )
+
+### Signature analysis. MAF tool steps MAF -> trinucleotideMatrix() -> trinucleotideMatrix() -> plotCophenetic() -> extractSignatures() -> compareSignatures() -> plotSignatures() 
+library(NMF)
+xrt_bca_sig <- estimateSignatures(mat = xrt_bca_tnm, nTry = 6)
+plotCophenetic(res = xrt_bca_sig, bestFit = 6) 
+
+## cophenetic plot showed biggest drop n=4
+xrt_bca_sig <- extractSignatures(mat = xrt_bca_tnm, n= 4)
+
+## Compare against original 30 COSMIC signatures
+## xrt_bca_og30_cosm <- compareSignatures(nmfRes = xrt_bca_sig, sig_db = "legacy")
+
+## Compare against version3 60 signatures
+xrt_bca_v3_cosm <- compareSignatures(nmfRes = xrt_bca_sig, sig_db = "SBS")
+
+## Plots COSMIC signatures
+pheatmap::pheatmap(mat = xrt_bca_v3_cosm$cosine_similarities, cluster_rows = FALSE, main = "cosine similarity against validated signatures")
+
+maftools::plotSignatures(nmfRes = xrt_bca_sig, title_size = 1.0, sig_db = "SBS")
+
+# pheatmap::pheatmap(mat = xrt_bca_og30_cosm$cosine_similarities, cluster_rows = FALSE, main = "cosine similarity against validated signatures")
+# maftools::plotSignatures(nmfRes = xrt_bca_sig, title_size = 1.0, sig_db = "legacy")
+
+## signature 3D barplot
+#install.packages("barplot3d")
+#library(barplot3d)
+#sig1 <- xrt_bca_sig$signatures[,1]
+#barplot3d::legoplot3d(contextdata = sig1, labels = FALSE, scalexy = 0.01, sixcolors = "sanger")
+
+### ==============================================================================================
+###
+
+### Set working directory, location, read TCGA for MutSig and Clinical information
+setwd("/Users/filipecarvalho/TCGA")
+
+tcga_maf <- read.table("mc3.v0.2.8.PUBLIC.maf", header = TRUE, sep = "")
+clinic_info <- read.csv("TCGA_CDR.csv", header = TRUE)
+
+#### brendan maf ## 
+tcga.brendan.maf <- read.table("mc3.blca.maf", header = TRUE, sep = "")
+
+## from Brendan bladder cancer tcga maf
+tcga.brendan <- read.maf(maf = tcga.brendan.maf)
+tcga.brendan
+
+plotmafSummary(maf = tcga.brendan, rmOutlier = TRUE, addStat = 'median', dashboard = TRUE, titvRaw = FALSE)
+
+oncoplot(maf = tcga.brendan, top = 10)
+
+## Maftools df_reduced for TCGA bladder cancer genes
+bca_genes <- c("TP53", "KMT2D", "KDM6A", "ARID1A", "PIK3CA", "KMT2C", "RB1", "EP300", "FGFR3", "STAG2", "ATM", "FAT1", "ELF3", "CREBBP", "ERBB2", "SPTAN1", "KMT2A", "ERBB3", "ERCC2", "CDKN1A", "ASXL2", "TSC1", "FBXW7")
+
+## RColorBrewer color pallet for variant classifications
+vc_col <- RColorBrewer::brewer.pal(n=6, name = "Dark2")
+names(vc_col) <- c("Frame_Shift_Ins", "Frame_Shift_Del", "Missense_Mutation", "Splice_Site", "Nonsense_Mutation", "Multi_Hit")
+print(vc_col)
+oncoplot(maf = tcga.brendan, colors= vc_col, genes = bca_genes, draw_titv = TRUE)
+
+### ============================================================================
+## Maftools df_reduced for ALL DNA damage response genes
+dnarepair_genes <- c("MLH1", "MSH2", "MSH6", "PMS1", "PMS2", "ERCC2", "ERCC3", "ERCC4", "ERCC5", "BRCA1", "BRCA2", "MRE11A", "NBN", "RAD50", "RAD51", "RAD51B", "RAD51D", "RAD52", "RAD54L", "BRIP1", "FANCA", "FANCC", "PALB2", "RAD51C", "BLM", "ATM", "ATR", "CHEK1", "CHEK2", "MDC1", "POLE", "MUTYH", "PARP1", "RECQL4")
+
+## RColorBrewer color pallet for variant classifications
+vc_col <- RColorBrewer::brewer.pal(n=6, name = "Dark2")
+names(vc_col) <- c("Frame_Shift_Ins", "Frame_Shift_Del", "Missense_Mutation", "Splice_Site", "Nonsense_Mutation", "Multi_Hit")
+print(vc_col)
+oncoplot(maf = tcga.brendan, colors= vc_col, genes = dnarepair_genes, draw_titv = TRUE)
+
+
+## =============================================================================
+## Mutational signatures 
+if(!requireNamespace("BiocManager", quietly = TRUE))
+        install.packages("BiocManager")
+BiocManager::install("BSgenome.Hsapiens.UCSC.hg19")
+
+library(BSgenome.Hsapiens.UCSC.hg19, quietly = TRUE)
+
+tcga.mibc.tnm <- trinucleotideMatrix(maf = tcga.brendan, prefix = "chr", add = TRUE, ref_genome = "BSgenome.Hsapiens.UCSC.hg19")
+
+### Signature analysis. MAF tool steps MAF -> trinucleotideMatrix() -> trinucleotideMatrix() -> plotCophenetic() -> extractSignatures() -> compareSignatures() -> plotSignatures() 
+library(NMF)
+tcga.mibc.sig <- estimateSignatures(mat = tcga.mibc.tnm, nTry = 10)
+
+plotCophenetic(res = tcga.mibc.sig, bestFit = 7) 
+
+## cophenetic plot showed biggest drop n=7
+tcga.mibc.sig <- extractSignatures(mat = tcga.mibc.tnm, n= 7)
+
+## Compare against version3 60 signatures
+tcga.mibc.v3.cosm <- compareSignatures(nmfRes = tcga.mibc.sig, sig_db = "SBS")
+
+pheatmap::pheatmap(mat = tcga.mibc.v3.cosm$cosine_similarities, cluster_rows = FALSE, main = "cosine similarity against validated signatures")
+
+maftools::plotSignatures(nmfRes = tcga.mibc.sig, title_size = 1.0, sig_db = "SBS")
+
+
+tcga.mibc.og30.cosm <- compareSignatures(nmfRes = tcga.mibc.sig, sig_db = "legacy")
+pheatmap::pheatmap(mat = tcga.mibc.og30.cosm$cosine_similarities, cluster_rows = FALSE, main = "cosine similarity against validated signatures")
+maftools::plotSignatures(nmfRes = tcga.mibc.sig, title_size = 1.0, sig_db = "legacy")
+
+
+## ==============================================================================
+
+## plot MIBC mutated genes in TCGA vs Mouw. Answer the question: Does this cohort resembles MIBC?  ====> double check mutation rates for TCGA
+## TP53
+tp53.df <- matrix(c(214/412,198/412,15/29,14/29), nrow = 2)
+rownames(tp53.df) <- c("Wt", "Mut")
+colnames(tp53.df) <- c("TCGA", "Mouw")
+barplot(as.matrix(tp53.df), main="TP53 mutations TCGA vs Mouw",
+        ylab="Fraction of Patients", col=c("blue","yellow"))
+tp53.df <- matrix(c(214,198,15,14), nrow = 2)
+fisher.test(tp53.df)
+
+## FGFR3
+fgfr3.df <- matrix(c(354/412,58/412,24/29,5/29), nrow = 2)
+rownames(fgfr3.df) <- c("Wt", "Mut")
+colnames(fgfr3.df) <- c("TCGA", "Mouw")
+barplot(as.matrix(fgfr3.df), main="FGFR3 mutations TCGA vs Mouw",
+        ylab="Fraction of Patients", col=c("blue","yellow"))
+fgfr3.df <- matrix(c(354,58,24,5), nrow = 2)
+fisher.test(fgfr3.df)
+
+## ERBB2
+erbb2.df <- matrix(c(362/412,50/412,26/29,3/29), nrow = 2)
+rownames(erbb2.df) <- c("Wt", "Mut")
+colnames(erbb2.df) <- c("TCGA", "Mouw")
+barplot(as.matrix(erbb2.df), main="ERBB2 mutations TCGA vs Mouw",
+        ylab="Fraction of Patients", col=c("blue","yellow"))
+erbb2.df <- matrix(c(362,50,26,3), nrow = 2)
+fisher.test(erbb2.df)
+
+## RB1
+rb1.df <- matrix(c(340/412,72/412, 25/29, 4/29), nrow = 2)
+rownames(rb1.df) <- c("Wt", "Mut")
+colnames(rb1.df) <- c("TCGA", "Mouw")
+barplot(as.matrix(rb1.df), main="RB1 mutations TCGA vs Mouw",
+        ylab="Fraction of Patients", col=c("blue","yellow"))
+rb1.df <- matrix(c(340,72, 25, 4), nrow = 2)
+fisher.test(rb1.df)
+
+## ============================================================================= STOPED HERE!!!! NEED TO RE SAVE THE PLOTS FOR SLIDES (TOO BIG)
+
+## plot top3 DNA repair genes in TCGA vs Mouw. Answer the question: Are DNA repair mutations enriched in Mouw cohort?
+## FANCA
+fanca.df <- matrix(c(391, 20, 28, 8), nrow = 2)
+rownames(fanca.df) <- c("Wt", "Mut")
+colnames(fanca.df) <- c("TCGA", "Mouw")
+barplot(as.matrix(fanca.df), main="FANCA mutations TCGA vs Mouw",
+        ylab="# Patients", col=c("blue","yellow"),
+        legend = rownames(fanca.df))
+fisher.test(fanca.df)
+
+fanca.df <- matrix(c(391/412, 20/412, 28/36, 8/36), nrow = 2)
+rownames(fanca.df) <- c("Wt", "Mut")
+colnames(fanca.df) <- c("TCGA", "Mouw")
+barplot(as.matrix(fanca.df), main="FANCA mutations",
+        ylab="Fraction of patients", col=c("blue","yellow"))
+
+## MSH6
+msh6.df <- matrix(c(401, 10, 30, 6), nrow = 2)
+rownames(msh6.df) <- c("Wt", "Mut")
+colnames(msh6.df) <- c("TCGA", "Mouw")
+barplot(as.matrix(msh6.df), main="MSH6 mutations",
+        ylab="# Patients", col=c("blue","yellow"),
+        legend = rownames(msh6.df))
+fisher.test(msh6.df)
+
+msh6.df <- matrix(c(401/411, 10/411, 30/36, 6/36), nrow = 2)
+rownames(msh6.df) <- c("Wt", "Mut")
+colnames(msh6.df) <- c("TCGA", "Mouw")
+barplot(as.matrix(msh6.df), main="MSH6 mutations",
+        ylab="Fraction of patients", col=c("blue","yellow"))
+
+## CHECK2
+check2.df <- matrix(c(401, 10, 30, 6), nrow = 2)
+rownames(check2.df) <- c("Wt", "Mut")
+colnames(check2.df) <- c("TCGA", "Mouw")
+barplot(as.matrix(check2.df), main="CHECK2 mutations",
+        ylab="# Patients", col=c("blue","yellow"),
+        legend = rownames(check2.df))
+fisher.test(check2.df)
+
+check2.df <- matrix(c(401/411, 10/411, 30/36, 6/36), nrow = 2)
+rownames(check2.df) <- c("Wt", "Mut")
+colnames(check2.df) <- c("TCGA", "Mouw")
+barplot(as.matrix(check2.df), main="CHECK2 mutations",
+        ylab="Fraction of patients", col=c("blue","yellow"))
+
+### ==============================================================================================
+###
+## create a df with all the indels from df_reduced
+df_indels <- subset(df_reduced, subset = Variant_Classification %in% c("In_Frame_Del", "In_Frame_Ins", "Frame_Shift_Del", "Frame_Shift_Ins")) %>% select(Tumor_Sample_Barcode, Variant_Classification) 
+table(df_indels)
+dim(df_indels) # 1122 2
+
+## create a df for single nucleotide variant from df_reduced
+unique(df_reduced$Variant_Classification)
+df_snv <- subset(df_reduced, subset = Variant_Classification %in% c("Silent", "5'UTR", "Missense_Mutation", "Splice_Site", "3'UTR",
+                                                                    "Intron", "RNA", "IGR", "5'Flank", "lincRNA", "Start_Codon_SNP", 
+                                                                    "De_novo_Start_OutOfFrame", "De_novo_Start_InFrame", "Nonstop_Mutation")) %>% select(Tumor_Sample_Barcode, Variant_Classification)
+dim(df_snv) # 18296 2
+table(df_snv)
+
+## df with total indels and snv for Mouw cohort
+indel_variants <- data.frame("case_id" = c("J55458", "T08299", "E11679", "K57437", "M03690", "N20349", "A12568", "X56565", "J39831", "M23658",
+                                           "A07361", "F05783", "M42934", "R35402", "X09833", "D59794", "W48457", "D01686", "F09288", "G11774",
+                                           "K37490", "M34353", "W49540", "E70362", "K52951", "X56520", "X63420", "E40708", "G37115", "J06357", 
+                                           "N58375", "R22951", "N13604", "26655T", "02769O", "10913M"), 
+                             "indels" = c(23,246, 25, 25, 16, 26, 37, 22, 21, 31, 28, 21, 16, 28, 15, 28, 22, 16, 31, 24, 28, 31, 21, 25, 16, 27, 28, 39, 15, 37, 28, 35, 22, 20, 16, 33), 
+                             "variants" = c(456,1198, 562, 496, 360, 202, 457, 784, 468, 513, 779, 380, 352, 834, 474, 606, 384, 214, 513, 354, 779, 330, 380, 330, 352, 346, 834, 207, 474, 1003,
+                                            606, 938, 384, 464, 214, 269))
+indel_variants
+## add column with indels/snv ratio
+mouw_indel_variants <- indel_variants %>% mutate(ratio = indels/variants)
+mouw_indel_variants
+
+## Total indels and snv from TCGA. NOTE: there is an typo in the database, TCGA-ZF-AA4N snv= 0. This pt was removed
+tcga_indel_var <- read.csv("TCGA_indels_snv.csv", header = TRUE, sep = ",", quote = "\"")
+tcga_indel_variants <- tcga_indel_var %>% mutate(ratio = indels/snv)
+tcga_indel_variants <- tcga_indel_variants[-397,]
+
+## ========================================================================
+
+## FOR BOXPLOTS AND STATS, RE LABLED AND ORGANIZED MOUW AND TCGA DATABASES TO BE ABLE TO INPUT IN ggplot and run stats
+
+## df with total indels and snv for Mouw cohort
+indel_variants <- data.frame("case_id" = c("Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw",
+                                           "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw",
+                                           "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", 
+                                           "Mouw", "Mouw", "Mouw", "Mouw", "Mouw", "Mouw"), 
+                             "indels" = c(23,246, 25, 25, 16, 26, 37, 22, 21, 31, 28, 21, 16, 28, 15, 28, 22, 16, 31, 24, 28, 31, 21, 25, 16, 27, 28, 39, 15, 37, 28, 35, 22, 20, 16, 33), 
+                             "variants" = c(456,1198, 562, 496, 360, 202, 457, 784, 468, 513, 779, 380, 352, 834, 474, 606, 384, 214, 513, 354, 779, 330, 380, 330, 352, 346, 834, 207, 474, 1003,
+                                            606, 938, 384, 464, 214, 269))
+
+## add column with indels/snv ratio
+mouw_indel_variants <- indel_variants %>% mutate(ratio = indels/variants)
+mouw_indel_variants
+
+## Total indels and snv from TCGA. NOTE: there is an typo in the database, TCGA-ZF-AA4N snv= 0. This pt was removed
+tcga_indel_var <- read.csv("TCGA_indels_snv1.csv", header = TRUE, sep = ",", quote = "\"")
+tcga_indel_variants <- tcga_indel_var %>% mutate(ratio = indels/snv)
+tcga_indel_variants <- tcga_indel_variants[-397,]
+
+
+## for boxplots
+ratio_tcga <- select(tcga_indel_variants, case_id, ratio)
+
+ratio_mouw <- select(mouw_indel_variants, case_id, ratio)
+
+ratios <- bind_rows(ratio_tcga, ratio_mouw)
+ratios
+
+ratios %>% ggplot(aes(x= case_id, y = ratio)) +
+        geom_boxplot(aes(fill=case_id)) +
+        xlab("Cohorts") +
+        ylab("Ratio Indels / SNVs") +
+        theme_bw() + theme(legend.title = element_blank(), panel.border = element_blank(), panel.grid.major = element_blank(),
+                           panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+## Sumary statistics
+mean(mouw_indel_variants$ratio) ## 0.06396614
+mean(tcga_indel_variants$ratio) ## 0.03440993
+
+sd(mouw_indel_variants$ratio) ## 0.04022542
+sd(tcga_indel_variants$ratio) ## 0.03142249
+
+median(mouw_indel_variants$ratio) ## 0.05042091
+median(tcga_indel_variants$ratio) ## 0.02688172
+
+quantile(mouw_indel_variants$ratio) ## [0.04165594, 0.07476636]
+quantile(tcga_indel_variants$ratio) ## [0.01405980, 0.04499443]
+
+## Wilcoxon rank sum/Mann Whitney
+wilcox.test(ratio~case_id, data = ratios) ## W = 3013, p-value = 3.649e-09
+
+## ========================================================
+## for boxplot deletions/insertions
+
+## df with total insertions and deletions for Mouw cohort
+ins_del <- data.frame("case_id" = c("J55458", "T08299", "E11679", "K57437", "M03690", "N20349", "A12568", "X56565", "J39831", "M23658",
+                                    "A07361", "F05783", "M42934", "R35402", "X09833", "D59794", "W48457", "D01686", "F09288", "G11774",
+                                    "K37490", "M34353", "W49540", "E70362", "K52951", "X56520", "X63420", "E40708", "G37115", "J06357", 
+                                    "N58375", "R22951", "N13604", "26655T", "02769O", "10913M"), 
+                      "insertions" = c(4, 53, 9, 7, 6, 13, 9, 7, 11, 5, 11, 9, 4, 12, 4, 5, 12, 
+                                       4, 5, 8, 11, 8, 9, 5, 4, 6, 12, 21, 4, 13, 5, 16, 12, 9, 4, 17), 
+                      "deletions" = c(19, 193, 16, 18, 10, 13, 28, 15, 10, 26, 17, 12, 12, 16, 11, 23, 
+                                      10, 12, 26, 16, 17, 23, 12, 20, 12, 21, 16, 18, 11, 24, 23, 19, 10, 11, 12, 16))
+
+## add column with deletions/insertions ratio
+mouw_ins_del <- ins_del %>% mutate(ratio = deletions/insertions)
+mouw_ins_del
+
+## Total insertions and deletions from TCGA  ## need to organize tcga data frame by sample, not by ins/dels
+setwd("/Users/filipecarvalho/TCGA")
+tcga_bca_maf <- read.table("mc3.blca.maf", header = TRUE, sep = "")
+tcga_ins_del <- tcga_bca_maf[tcga_bca_maf$Variant_Classification== c("Frame_Shift_Ins", "Frame_Shift_Del", "In_Frame_Del", "In_Frame_Ins"), ] %>% select(Variant_Classification, Tumor_Sample_Barcode)
+nrow(tcga_ins_del) ## 593, in the manuscript 2888
+
+nrow(tcga_bca_maf)
+
+tcga_var_snv <- tcga_bca_maf[tcga_bca_maf$VARIANT_CLASS== c("SNV"), ] %>% select(VARIANT_CLASS, Tumor_Sample_Barcode)
+nrow(tcga_var_snv) ## 152427, in the manuscript 128772
+
+unique(tcga_bca_maf$Tumor_Sample_Barcode) ## 411 levels
+
+
+tcga_indels <- tcga_bca_maf[tcga_bca_maf$Variant_Classification== c("Frame_Shift_Ins", "Frame_Shift_Del", "In_Frame_Del", "In_Frame_Ins"), ]
+str(tcga_indels)
+
+
+tcga_var_class <- tcga_bca_maf[tcga_bca_maf$VARIANT_CLASS== c("insertion", "deletion"), ] %>% select(VARIANT_CLASS, Tumor_Sample_Barcode)
+nrow(tcga_var_class) ## 1282

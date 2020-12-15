@@ -1,0 +1,4 @@
+"0","top20_sigOE_genes <- res_tableOE_tb %>% "
+"0","  arrange(padj) %>% 	#Arrange rows by padj values"
+"0","  pull(gene) %>% 		#Extract character vector of ordered genes"
+"0","  head(n=20)"

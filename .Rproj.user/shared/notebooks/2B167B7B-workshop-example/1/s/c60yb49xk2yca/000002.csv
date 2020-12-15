@@ -1,0 +1,6 @@
+"0","data <- read.csv(""data/counts.rpkm.csv"", header=T, row.names=1) "
+"0","meta <- read.csv(""data/mouse_exp_design.csv"", header=T, row.names=1)"
+"0","kable(meta, format=""markdown"")"
+"2","Error in kable(meta, format = ""markdown"") : 
+  could not find function ""kable""
+"

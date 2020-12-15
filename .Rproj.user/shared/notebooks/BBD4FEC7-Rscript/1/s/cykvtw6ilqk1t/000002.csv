@@ -1,0 +1,5 @@
+"0","gathered_top20_sigOE <- top20_sigOE_norm %>%"
+"0","  gather(colnames(top20_sigOE_norm)[2:9], key = ""samplename"", value = ""normalized_counts"")"
+"0","gathered_top20_sigOE <- inner_join(mov10_meta, gathered_top20_sigOE)"
+"2","Joining, by = ""samplename""
+"

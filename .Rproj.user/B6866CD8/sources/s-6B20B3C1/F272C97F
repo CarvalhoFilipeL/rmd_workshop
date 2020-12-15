@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1608049370554.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "F272C97F",
+    "lastKnownWriteTime" : 1607444824,
+    "last_content_update" : 1607444824,
+    "path" : "~/rmd_workshop/workshop-example.rmd",
+    "project_path" : "workshop-example.rmd",
+    "properties" : {
+        "cursorPosition" : "94,0",
+        "last_setup_crc32" : "E3E7E227f298bd79",
+        "scrollLine" : "69"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

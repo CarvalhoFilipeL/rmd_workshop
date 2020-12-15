@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1607465429320.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "B56F7C7B",
+    "lastKnownWriteTime" : 1607727018,
+    "last_content_update" : 1607727018749,
+    "path" : "~/maf/working_xrt_bca.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "441,0",
+        "scrollLine" : "414"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
